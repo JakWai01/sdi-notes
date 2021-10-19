@@ -59,3 +59,29 @@ dig -x 141.62.1.53
 ;; WHEN: Mon Oct 18 20:25:00 CEST 2021
 ;; MSG SIZE  rcvd: 92
 ```
+
+### Setup BIND
+
+Install BIND
+```
+sudo apt update
+sudo apt install bind9 bind9utils bind9-doc
+```
+
+Start BIND
+```
+sudo systemctl start bind9
+sudo systemctl enable bind9
+```
+
+Check if BIND (named) is listening on port 53
+```
+sudo ss -tlnp | grep named
+```
+```
+root@sdi1a:~# ss -tlnp | grep named
+LISTEN     0      10     141.62.75.101:53                       *:*                   users:(("named",pid=16759,fd=22))
+LISTEN     0      10     127.0.0.1:53                       *:*                   users:(("named",pid=16759,fd=21))
+LISTEN     0      128    127.0.0.1:953                      *:*                   users:(("named",pid=16759,fd=23))
+```
+
