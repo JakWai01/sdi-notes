@@ -140,33 +140,22 @@ options {
 	// Uncomment the following block, and insert the addresses replacing 
 	// the all-0's placeholder.
 
-	// forwarders {
-	// 	0.0.0.0;
-	// };
+	forwarders {
+		1.1.1.1; // Cloudflare
+		8.8.8.8; // Google
+	};
 
 	//========================================================================
 	// If BIND logs error messages about the root key being expired,
 	// you will need to update your keys.  See https://www.isc.org/bind-keys
 	//========================================================================
-	dnssec-validation auto;
-
-	listen-on-v6 { any; };
-
-	// hide version number from clients for security reasons.
-	version "not currently available";
-
-	// disable recursion on authoritative DNS server.
-	recursion no;
-
-	// enable the query log
-	querylog yes;
-
-	// disallow zone transfer
-	allow-transfer { none; };
+	dnssec-validation no;
+	recursion yes;
+	
 };
 ```
 
-Next, we need to add a zone for our domain name. Achieve this by editing the `/etc/bind/named.conf.local` file.
+Next, we need to add zones for our forward and reverse lookups. Achieve this by editing the `/etc/bind/named.conf.local` file.
 
 ```
 vim /etc/bind/named.conf.local
@@ -185,8 +174,11 @@ This file should have the following content:
 zone "mi.hdm-stuttgart.de" {
 	type master;
 	file "/etc/bind/db.mi.hdm-stuttgart.de";
-	allow-query { any; };
-	allow-transfer { 141.62.75.101; };
+};
+
+zone "75.62.141.in-addr.arpa" {
+	type master;
+	file "/etc/bind/db.141";
 };
 ```
 
@@ -216,22 +208,24 @@ $TTL	86400
 			2419200		; Expire
 			  86400 )	; Negative Cache TTL
 
-; Name servers for this domain
-	IN	NS	ns1.mi.hdm-stuttgart.de.
+@	IN	NS	ns1.mi.hdm-stuttgart.de.
+@	IN	A	141.62.75.101
+@	IN	MX	10	mx1.hdm-stuttgart.de.
 
 ; A records
-ns1	IN	A	141.62.75.101
-sdi1a	IN	A	141.62.75.101
-www	IN	A	141.62.75.101
-@	IN	A	141.62.75.101
+www				IN	A	141.62.75.101
+sdi1a.mi.hdm-stuttgart.de.	IN	A	141.62.75.101
+sdi1b.mi.hdm-stuttgart.de.	IN	A	141.62.75.101
+ns1.mi.hdm-stuttgart.de. 	IN	A	141.62.75.101
 
 ; CNAME records
-www1-1	IN	CNAME	141.62.75.101	
-www1-2	IN	CNAME	141.62.75.101	
-info	IN	CNAME	141.62.75.101
+www1-1	IN	CNAME	www	
+www1-2	IN	CNAME	www	
+info	IN	CNAME	www
+
 ```
 
-Enable IPv4 in `/etc/default/bind9`
+Enable IPv4 in `/etc/default/named`
 
 The content should be:
 ```
@@ -243,33 +237,241 @@ RESOLVCONF=no
 OPTIONS="-4 -u bind"
 ```
 
-Now, add the reverse zone. Therefore, edit the `/etc/bind/named.conf.local` file so it looks like this:
-
-```
-//
-// Do any local configuration here
-//
-
-// Consider adding the 1918 zones here, if they are not used in your
-// organization
-//include "/etc/bind/zones.rfc1918";
-
-zone "mi.hdm-stuttgart.de" {
-	type master;
-	file "/etc/bind/db.mi.hdm-stuttgart.de";
-	allow-query { any; };
-	allow-transfer { 141.62.75.101; };
-};
-
-zone "101.75.62.in-addr.arpa" {
-	type master;
-	notify no;
-	file "/etc/bind/db.141";
-};
-```
-
 Now create the `/etc/bind/db.141` file and insert the following:
 
 ```
+;
+; BIND reverse data file for local loopback interface
+;
+$TTL    604800
+@       IN      SOA     ns1.mi.hdm-stuttgart.de. hostmaster.mi.hdm-stuttgart.de. (
+                              2         ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                        2419200         ; Expire
+                         604800 )       ; Negative Cache TTL
+;
+@	IN	NS	ns1.mi.hdm-stuttgart.de.
+101	IN	PTR	sdi1a.mi.hdm-stuttgart.de.
+
+```
+
+Now restart the bind9 service
+
+``` 
+systemctl restart bind9
+```
+
+Now everything should work accordingly. Test your configurations with the following commands:
+
+```
+# dig @141.62.75.101 sdi1a.mi.hdm-stuttgart.de
+
+; <<>> DiG 9.16.15-Debian <<>> @141.62.75.101 sdi1a.mi.hdm-stuttgart.de
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 15934
+;; flags: qr aa rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 1232
+; COOKIE: 38476f14e5071de20100000061752cde10f1ae98e7409184 (good)
+;; QUESTION SECTION:
+;sdi1a.mi.hdm-stuttgart.de.	IN	A
+
+;; ANSWER SECTION:
+sdi1a.mi.hdm-stuttgart.de. 86400 IN	A	141.62.75.101
+
+;; Query time: 0 msec
+;; SERVER: 141.62.75.101#53(141.62.75.101)
+;; WHEN: Sun Oct 24 11:52:30 CEST 2021
+;; MSG SIZE  rcvd: 98
+
+```
+
+```
+ dig @141.62.75.101 ns1.mi.hdm-stuttgart.de
+
+; <<>> DiG 9.16.15-Debian <<>> @141.62.75.101 ns1.mi.hdm-stuttgart.de
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 5720
+;; flags: qr aa rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 1232
+; COOKIE: 40f7e22511c8f42e0100000061752d2d56c4468f01c6c800 (good)
+;; QUESTION SECTION:
+;ns1.mi.hdm-stuttgart.de.	IN	A
+
+;; ANSWER SECTION:
+ns1.mi.hdm-stuttgart.de. 86400	IN	A	141.62.75.101
+
+;; Query time: 0 msec
+;; SERVER: 141.62.75.101#53(141.62.75.101)
+;; WHEN: Sun Oct 24 11:53:49 CEST 2021
+;; MSG SIZE  rcvd: 96
+
+```
+
+```
+# dig @141.62.75.101 www1-1.mi.hdm-stuttgart.de
+
+; <<>> DiG 9.16.15-Debian <<>> @141.62.75.101 www1-1.mi.hdm-stuttgart.de
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 21939
+;; flags: qr aa rd ra; QUERY: 1, ANSWER: 2, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 1232
+; COOKIE: 0143132ee843744e0100000061752d45fd31a73abc08c9a3 (good)
+;; QUESTION SECTION:
+;www1-1.mi.hdm-stuttgart.de.	IN	A
+
+;; ANSWER SECTION:
+www1-1.mi.hdm-stuttgart.de. 86400 IN	CNAME	www.mi.hdm-stuttgart.de.
+www.mi.hdm-stuttgart.de. 86400	IN	A	141.62.75.101
+
+;; Query time: 0 msec
+;; SERVER: 141.62.75.101#53(141.62.75.101)
+;; WHEN: Sun Oct 24 11:54:13 CEST 2021
+;; MSG SIZE  rcvd: 117
+
+root@sdi1a:/etc/bind# 
+```
+
+```
+dig @141.62.75.101 www1-2.mi.hdm-stuttgart.de
+
+; <<>> DiG 9.16.15-Debian <<>> @141.62.75.101 www1-2.mi.hdm-stuttgart.de
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 18823
+;; flags: qr aa rd ra; QUERY: 1, ANSWER: 2, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 1232
+; COOKIE: b4ce868197631a250100000061752d4ffa262ce084071761 (good)
+;; QUESTION SECTION:
+;www1-2.mi.hdm-stuttgart.de.	IN	A
+
+;; ANSWER SECTION:
+www1-2.mi.hdm-stuttgart.de. 86400 IN	CNAME	www.mi.hdm-stuttgart.de.
+www.mi.hdm-stuttgart.de. 86400	IN	A	141.62.75.101
+
+;; Query time: 0 msec
+;; SERVER: 141.62.75.101#53(141.62.75.101)
+;; WHEN: Sun Oct 24 11:54:23 CEST 2021
+;; MSG SIZE  rcvd: 117
+
+```
+
+```
+# dig @141.62.75.101 info.mi.hdm-stuttgart.de
+
+; <<>> DiG 9.16.15-Debian <<>> @141.62.75.101 info.mi.hdm-stuttgart.de
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 5033
+;; flags: qr aa rd ra; QUERY: 1, ANSWER: 2, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 1232
+; COOKIE: 294653251b1b58c20100000061752d6a07e56e6fc50e545c (good)
+;; QUESTION SECTION:
+;info.mi.hdm-stuttgart.de.	IN	A
+
+;; ANSWER SECTION:
+info.mi.hdm-stuttgart.de. 86400	IN	CNAME	www.mi.hdm-stuttgart.de.
+www.mi.hdm-stuttgart.de. 86400	IN	A	141.62.75.101
+
+;; Query time: 0 msec
+;; SERVER: 141.62.75.101#53(141.62.75.101)
+;; WHEN: Sun Oct 24 11:54:50 CEST 2021
+;; MSG SIZE  rcvd: 115
+
+```
+
+```
+# dig @141.62.75.101 mx1.hdm-stuttgart.de
+
+; <<>> DiG 9.16.15-Debian <<>> @141.62.75.101 mx1.hdm-stuttgart.de
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 45334
+;; flags: qr rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 1232
+; COOKIE: 250912354598ef4f0100000061752db4dcd3a65394a4e05a (good)
+;; QUESTION SECTION:
+;mx1.hdm-stuttgart.de.		IN	A
+
+;; ANSWER SECTION:
+mx1.hdm-stuttgart.de.	2390	IN	A	141.62.1.22
+
+;; Query time: 0 msec
+;; SERVER: 141.62.75.101#53(141.62.75.101)
+;; WHEN: Sun Oct 24 11:56:04 CEST 2021
+;; MSG SIZE  rcvd: 93
+
+```
+
+```
+# dig @141.62.75.101 www.google.com
+
+; <<>> DiG 9.16.15-Debian <<>> @141.62.75.101 www.google.com
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 51453
+;; flags: qr rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 1232
+; COOKIE: e2c3965c0b2a669a0100000061752dc21bed21ef598dd7f6 (good)
+;; QUESTION SECTION:
+;www.google.com.			IN	A
+
+;; ANSWER SECTION:
+www.google.com.		137	IN	A	142.250.186.68
+
+;; Query time: 11 msec
+;; SERVER: 141.62.75.101#53(141.62.75.101)
+;; WHEN: Sun Oct 24 11:56:18 CEST 2021
+;; MSG SIZE  rcvd: 87
+
+```
+
+```
+# dig @141.62.75.101 -x 141.62.75.101
+
+; <<>> DiG 9.16.15-Debian <<>> @141.62.75.101 -x 141.62.75.101
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 36454
+;; flags: qr aa rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 1232
+; COOKIE: b1a16000bbd7c0420100000061752dd7df9f14643255bb09 (good)
+;; QUESTION SECTION:
+;101.75.62.141.in-addr.arpa.	IN	PTR
+
+;; ANSWER SECTION:
+101.75.62.141.in-addr.arpa. 604800 IN	PTR	sdi1a.mi.hdm-stuttgart.de.
+
+;; Query time: 0 msec
+;; SERVER: 141.62.75.101#53(141.62.75.101)
+;; WHEN: Sun Oct 24 11:56:39 CEST 2021
+;; MSG SIZE  rcvd: 122
 
 ```
