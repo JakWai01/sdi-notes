@@ -659,3 +659,90 @@ result: 0 Success
 # numEntries: 1
 ```
 
+### Setup an OpenLDAP server
+
+First of all, one might use the following commands to install some useful utilities.
+
+```shell
+# apt install dialog
+```
+
+```shell
+# apt install slapd
+```
+
+In the following, the admin password is set to `password`. Please make sure you are using a more secure password than we are when configuring your LDAP server.	
+
+With `dpkg-reconfigure slapd`, you can modify your base configuration. Following the dialog accordingly should lead to  a successful result.
+
+![First dialog page](./static/ldap_1.png)
+
+![Second dialog page](./static/ldap_2.png)
+
+![Third dialog page](./static/ldap_3.png)
+
+![Forth dialog page](./static/ldap_4.png)
+
+![Fifth dialog page](./static/ldap_5.png)
+
+![Sixth dialog page](./static/ldap_6.png)
+
+After setting up slapd, we can use `ss -tlnp` to verify that a server is running.
+
+```shell
+# ss -tlnp
+State                    Recv-Q                   Send-Q                                     Local Address:Port                                       Peer Address:Port                   Process                                             
+LISTEN                   0                        10                                         141.62.75.101:53                                              0.0.0.0:*                       users:(("named",pid=448,fd=19))                    
+LISTEN                   0                        10                                             127.0.0.1:53                                              0.0.0.0:*                       users:(("named",pid=448,fd=16))                    
+LISTEN                   0                        128                                              0.0.0.0:22                                              0.0.0.0:*                       users:(("sshd",pid=127,fd=3))                      
+LISTEN                   0                        4096                                           127.0.0.1:953                                             0.0.0.0:*                       users:(("named",pid=448,fd=21))                    
+LISTEN                   0                        100                                            127.0.0.1:25                                              0.0.0.0:*                       users:(("master",pid=292,fd=13))                   
+LISTEN                   0                        1024                                             0.0.0.0:389                                             0.0.0.0:*                       users:(("slapd",pid=7245,fd=8))                    
+LISTEN                   0                        128                                                 [::]:22                                                 [::]:*                       users:(("sshd",pid=127,fd=4))                      
+LISTEN                   0                        100                                                [::1]:25                                                 [::]:*                       users:(("master",pid=292,fd=14))                   
+LISTEN                   0                        1024                                                [::]:389                                                [::]:*                       users:(("slapd",pid=7245,fd=9))
+```
+
+```shell
+ldapsearch -Q -LLL -Y EXTERNAL -H ldapi:/// -b cn=config dn
+dn: cn=config
+
+dn: cn=module{0},cn=config
+
+dn: cn=schema,cn=config
+
+dn: cn={0}core,cn=schema,cn=config
+
+dn: cn={1}cosine,cn=schema,cn=config
+
+dn: cn={2}nis,cn=schema,cn=config
+
+dn: cn={3}inetorgperson,cn=schema,cn=config
+
+dn: olcDatabase={-1}frontend,cn=config
+
+dn: olcDatabase={0}config,cn=config
+
+dn: olcDatabase={1}mdb,cn=config
+```
+
+```shell
+# ldapwhoami -x 
+anonymous
+```
+
+As mentioned in the task, we need to rename the `dc` to `betrayer.com`. So we just do `dpkg-reconfigure slapd` another time using the required information.
+
+![Rename dc to destroyer.com](./static/ldap_destroyer.png)
+
+We can now use `ldapwhoami` with our configuration:
+
+```shell
+# ldapwhoami -x -D cn=admin,dc=betrayer,dc=com -W
+Enter LDAP Password: 
+dn:cn=admin,dc=betrayer,dc=com
+```
+
+We can connect to our server using Apache Directory Studio with the following configuration.
+
+![Connect to LDAP server](./static/ldap_connect_openldap.png)
