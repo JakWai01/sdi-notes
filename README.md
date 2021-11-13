@@ -475,3 +475,187 @@ www.google.com.		137	IN	A	142.250.186.68
 ;; MSG SIZE  rcvd: 122
 
 ```
+
+## LDAP
+
+### Browsing an existing LDAP Server using `Apache Directory Studio`
+
+#### Setup Apache Directory Studio to anonymously connect to ldap1.hdm-stuttgart.de using TLS.
+
+To setup Apache Directory Studio to connect to the LDAP server, create a new connection with the following properties: 
+![Connect to LDAP server](./static/ldap_connection.png)
+
+If your connection was successful, your user interface should look somewhat like this: 
+![Connection successful](./static/ldap_connection_success.png)
+
+#### Use a filter like (uid-xy234) to find your personal entry beneath ou=userlist,dc=hdm-stuttgart,dc=de, Use the corresponding DN e.g. uid=xy234, ou=userlist,dc=hdm-stuttgart,dc=de to reconnect using password authentication. Then browse your own entry again. Can you spot any difference?
+
+Therefore, you right-click on the userlist and apply a filter on the children. This should work like displayed in the following two pictures.
+
+![Userlist](./static/ldap_filter_children_on.png)
+
+![Filter Children](./static/ldap_filter_children.png)
+
+As one can see in the picture below, the entry appears and can be examined further by clicking on it.
+
+![Filter Children Result](./static/ldap_filter_children_result.png)
+
+The other option to find ones own entry is to create a search. The content should look somewhat like in the following picture.
+
+![Create Search](./static/ldap_create_search.png)
+
+Then ones user should be found and can be examined. 
+
+![Search Results](./static/ldap_search_results.png)
+
+After following the same steps while being logged in, the user entry should look more like in the following picture. As one can see, some more personal information like the hash of the users password or his student-identification number is provided.
+
+![Search Results while being logged in](./static/ldap_jw_information_logged_in.png)
+### Browsing an existing LDAP Server using `ldapsearch`
+
+#### Setup ldapsearch to anonymously connect to ldap1.hdm-stuttgart.de using TLS.
+
+The following command connects to the LDAP server and displays the information below. The output is a shortened version, as there are too many user entries to display here.
+
+```shell
+$ ldapsearch -x -b "ou=userlist,dc=hdm-stuttgart,dc=de" -H ldap://ldap1.hdm-stuttgart.de
+```
+
+```shell
+# gast39, userlist, hdm-stuttgart.de
+dn: uid=gast39,ou=userlist,dc=hdm-stuttgart,dc=de
+hdmCategory: 4
+sn: fixme
+loginShell: /bin/sh
+uidNumber: 46139
+gidNumber: 35102
+uid: gast39
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+objectClass: hdmAccount
+objectClass: hdmSambaDomain
+objectClass: eduPerson
+cn:: dW5rbm93biA=
+homeDirectory: /home/stud/XX/gast39
+givenName: Gast
+eduPersonAffiliation: faculty
+eduPersonAffiliation: library-walk-in
+
+# gast38, userlist, hdm-stuttgart.de
+dn: uid=gast38,ou=userlist,dc=hdm-stuttgart,dc=de
+hdmCategory: 4
+sn: fixme
+loginShell: /bin/sh
+uidNumber: 46138
+gidNumber: 35102
+uid: gast38
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+objectClass: hdmAccount
+objectClass: hdmSambaDomain
+objectClass: eduPerson
+cn:: dW5rbm93biA=
+homeDirectory: /home/stud/XX/gast38
+givenName: Gast
+eduPersonAffiliation: faculty
+eduPersonAffiliation: library-walk-in
+```
+
+#### Use a filter like (uid-xy234) to find your personal entry beneath ou=userlist,dc=hdm-stuttgart,dc=de, Use the corresponding DN e.g. uid=xy234, ou=userlist,dc=hdm-stuttgart,dc=de to reconnect using password authentication. Then browse your own entry again. Can you spot any difference?	
+
+```shell
+$ ldapsearch -x -b "uid=jw163, ou=userlist,dc=hdm-stuttgart,dc=de" -H ldap://ldap1.hdm-stuttgart.de
+# extended LDIF
+#
+# LDAPv3
+# base <uid=jw163, ou=userlist,dc=hdm-stuttgart,dc=de> with scope subtree
+# filter: (objectclass=*)
+# requesting: ALL
+#
+
+# jw163, userlist, hdm-stuttgart.de
+dn: uid=jw163,ou=userlist,dc=hdm-stuttgart,dc=de
+displayName: Waibel Jakob Elias
+employeeType: student
+objectClass: hdmAccount
+objectClass: hdmStudent
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+objectClass: eduPerson
+eduPersonAffiliation: member
+eduPersonAffiliation: student
+eduPersonAffiliation: library-walk-in
+uid: jw163
+mail: jw163@hdm-Stuttgart.de
+uidNumber: 67828
+cn: Waibel Jakob Elias
+loginShell: /bin/sh
+hdmCategory: 1
+gidNumber: 100
+givenName: Jakob Elias
+homeDirectory: /home/stud/j/jw163
+sn: Waibel
+
+# search result
+search: 2
+result: 0 Success
+
+# numResponses: 2
+# numEntries: 1
+```
+
+After being logged in, we can spot some more information:
+
+```shell
+$ ldapsearch -x -D "uid=jw163, ou=userlist,dc=hdm-stuttgart,dc=de"  -W -H ldap://ldap1.hdm-stuttgart.de -b " uid=jw163, ou=userlist,dc=hdm-stuttgart,dc=de"  -s sub 'uid=jw163'
+Enter LDAP Password: 
+# extended LDIF
+#
+# LDAPv3
+# base < uid=jw163, ou=userlist,dc=hdm-stuttgart,dc=de> with scope subtree
+# filter: uid=jw163
+# requesting: ALL
+#
+
+# jw163, userlist, hdm-stuttgart.de
+dn: uid=jw163,ou=userlist,dc=hdm-stuttgart,dc=de
+businessCategory: 1
+businessCategory: {11112-3}
+employeeType: student
+postOfficeBox: 2G
+objectClass: hdmAccount
+objectClass: hdmStudent
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+objectClass: eduPerson
+eduPersonAffiliation: member
+eduPersonAffiliation: student
+eduPersonAffiliation: library-walk-in
+uid: jw163
+mail: jw163@hdm-Stuttgart.de
+uidNumber: 67828
+cn: Waibel Jakob Elias
+loginShell: /bin/sh
+hdmCategory: 1
+gidNumber: 100
+employeeNumber: CENSORED
+givenName: Jakob Elias
+homeDirectory: /home/stud/j/jw163
+sn: Waibel
+matrikelNr: CENSORED 
+userPassword:: CENSORED
+shadowLastChange: 18316
+sambaNTPassword: CENSORED
+
+# search result
+search: 2
+result: 0 Success
+
+# numResponses: 2
+# numEntries: 1
+```
+
