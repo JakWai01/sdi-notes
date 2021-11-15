@@ -889,3 +889,38 @@ After that, our new connection looks like this:
 ![Bean view](./static/bean_auth.png)
 
 ### Filter based search
+
+#### All users with a uid attribute value starting with the letter “b”.
+
+![Search properties](./static/users_start_with_b.png)
+
+![Search results](./static/result_starts_with_b.png)
+
+
+#### All entries either with either a defined uid attribute or a ou attribute starting with letter “d”.
+
+![Search properties](./static/filter_defined_uid_ou_starting_with_d.png)
+
+![Search results](./static/uid_or_starts_with_d.png)
+
+#### All users entries within the whole DIT having a gidNumber value of 100.
+
+![Search properties](./static/gid100.png)
+
+![Search results](./static/gid100_result.png)
+#### All user entries belonging to the billing department having a uid value greater than 1023.
+
+![Search properties](./static/uid1023.png)
+
+![Search results](./static/uid1023_result.png)
+#### All user entries within the whole DIT having a commonName containing the substring “ei”.
+
+![Search properties](./static/ei.png)
+
+![Search results](./static/ei_result.png)
+#### All user entries within the whole DIT belonging to gidNumber == 100 or having a uid value starting with letter “t”.
+
+![Search properties](./static/100_t.png)
+
+![Search results](./static/100_t_result.png)
+
