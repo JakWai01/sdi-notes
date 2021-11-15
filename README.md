@@ -746,3 +746,128 @@ dn:cn=admin,dc=betrayer,dc=com
 We can connect to our server using Apache Directory Studio with the following configuration.
 
 ![Connect to LDAP server](./static/ldap_connect_openldap.png)
+
+To authorize as an administrator, we just use our admin credentials.
+
+![Connect as Administrator](./static/openldap_admin.png)
+
+After creating our LDAP tree, it looks like this: 
+
+![LDAP tree](./static/organizational_structure.png)
+
+Our export dump looks like this: 
+
+```ldif
+version: 1
+
+dn: dc=betrayer,dc=com
+objectClass: dcObject
+objectClass: organization
+objectClass: top
+dc: betrayer
+o: betrayer.com
+
+dn: cn=admin,dc=betrayer,dc=com
+objectClass: organizationalRole
+objectClass: simpleSecurityObject
+cn: admin
+userPassword:: e1NTSEF9cEhFK0VQT0cyZ3lSeU9nanZGcXNXT2I1ekdzR2w5Q0Q=
+description: LDAP administrator
+
+dn: ou=departments,dc=betrayer,dc=com
+objectClass: organizationalUnit
+objectClass: top
+ou: departments
+
+dn: ou=software,ou=departments,dc=betrayer,dc=com
+objectClass: organizationalUnit
+objectClass: top
+ou: software
+
+dn: ou=financial,ou=departments,dc=betrayer,dc=com
+objectClass: organizationalUnit
+objectClass: top
+ou: financial
+
+dn: ou=devel,ou=software,ou=departments,dc=betrayer,dc=com
+objectClass: organizationalUnit
+objectClass: top
+ou: devel
+
+dn: ou=testing,ou=software,ou=departments,dc=betrayer,dc=com
+objectClass: organizationalUnit
+objectClass: top
+ou: testing
+
+dn: uid=bean,ou=devel,ou=software,ou=departments,dc=betrayer,dc=com
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+objectClass: top
+cn: Audrey Bean
+sn: Bean
+givenName: Audrey
+mail: bean@betrayer.com
+uid: bean
+userPassword:: e3NtZDV9YVhKL2JlVkF2TDRENk9pMFRLcDhjM3ovYTZQZzBXeHA=
+
+dn: uid=smith,ou=devel,ou=software,ou=departments,dc=betrayer,dc=com
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+objectClass: top
+cn: Jane Smith
+sn: Smith
+givenName: Jane
+mail: smith@betrayer.com
+uid: smith
+userPassword:: e3NtZDV9YVhKL2JlVkF2TDRENk9pMFRLcDhjM3ovYTZQZzBXeHA=
+
+dn: uid=waibel,ou=financial,ou=departments,dc=betrayer,dc=com
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+objectClass: top
+cn: Jakob Waibel
+sn: Waibel
+givenName: Jakob
+mail: waibel@betrayer.com
+uid: waibel
+userPassword:: e3NtZDV9YVhKL2JlVkF2TDRENk9pMFRLcDhjM3ovYTZQZzBXeHA=
+
+dn: uid=simpson,ou=financial,ou=departments,dc=betrayer,dc=com
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+objectClass: top
+cn: Homer Simpson
+sn: Simpson
+givenName: Homer
+mail: simpson@betrayer.com
+uid: simpson
+userPassword:: e3NtZDV9YVhKL2JlVkF2TDRENk9pMFRLcDhjM3ovYTZQZzBXeHA=
+
+dn: uid=pojtinger,ou=testing,ou=software,ou=departments,dc=betrayer,dc=com
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+objectClass: top
+cn: Felix Pojtinger
+sn: Pojtinger
+givenName: Felix
+mail: pojtinger@betrayer.com
+uid: pojtinger
+userPassword:: e3NtZDV9YVhKL2JlVkF2TDRENk9pMFRLcDhjM3ovYTZQZzBXeHA=
+
+dn: uid=simpson,ou=testing,ou=software,ou=departments,dc=betrayer,dc=com
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+objectClass: top
+cn: Maggie Simpson
+sn: Simpson
+givenName: Maggie
+mail: simpson@betrayer.com
+uid: simpson
+userPassword:: e3NtZDV9YVhKL2JlVkF2TDRENk9pMFRLcDhjM3ovYTZQZzBXeHA=
+```
