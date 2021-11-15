@@ -751,6 +751,8 @@ To authorize as an administrator, we just use our admin credentials.
 
 ![Connect as Administrator](./static/openldap_admin.png)
 
+### Populating your DIT
+
 After creating our LDAP tree, it looks like this: 
 
 ![LDAP tree](./static/organizational_structure.png)
@@ -885,3 +887,5 @@ Afterwards we create a new connection with the following properties for the auth
 After that, our new connection looks like this: 
 
 ![Bean view](./static/bean_auth.png)
+
+### Filter based search
