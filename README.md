@@ -871,3 +871,17 @@ mail: simpson@betrayer.com
 uid: simpson
 userPassword:: e3NtZDV9YVhKL2JlVkF2TDRENk9pMFRLcDhjM3ovYTZQZzBXeHA=
 ```
+
+### Testing a bind operation as non - admin user
+
+First we set a password for `bean`. In our case, we set the password to `password`.
+
+![Set password for bean](./static/bean_pw.png)
+
+Afterwards we create a new connection with the following properties for the authentication section:
+
+![Bean authentication](./static/bean.png)
+
+After that, our new connection looks like this: 
+
+![Bean view](./static/bean_auth.png)
