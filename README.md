@@ -888,6 +888,14 @@ After that, our new connection looks like this:
 
 ![Bean view](./static/bean_auth.png)
 
+### Extending an existing entry
+
+To extend an existing entry and to add a `posixAccount`, one needs to right-click on the `objectClass` attribute and click on `New Value`.  
+
+![posixAccount](./static/posix.png)
+
+After that look for the `posixAccount` like displayed in the screenshot and `Add` it so it appears in the right column. After clicking `Next`, one needs to specify a valid `gidNumber`, `homeDirectory` and `uidNumber`. Now complete the configuration by clicking on `Finish`.
+
 ### Filter based search
 
 #### All users with a uid attribute value starting with the letter “b”.
