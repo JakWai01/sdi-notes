@@ -1296,3 +1296,96 @@ uid=1337(waibel) gid=100(users) groups=100(users)
 ```
 
 TODO: Are we finished here?
+
+#### Backup and recovery / restore
+
+First, we setup a second LDAP server on `sdi1b.mi.hdm-stuttgart.de`. 
+
+Now we dump the configuration and the data into ldif files.
+```bash
+# slapcat -b cn=config -l ldap-config.ldif 
+# slapcat -l ldap-data.ldif
+```
+
+After creating an ssh-key on `sdi1a` and adding its public key to the `authorized_keys` file on `sdi1b` we can use scp to transfer the files from `sdi1a` to `sdi1b`.
+
+```bash
+# scp {ldap-config.ldif,ldap-data.ldif} root@sdi1b.mi.hdm-stuttgart.de:~
+ldap-config.ldif                             100%   38KB  18.0MB/s   00:00    
+ldap-data.ldif                               100% 7977    19.0MB/s   00:00    
+```
+
+On `sdi1b` we stop the `slapd` service with `systemctl stop slapd` and we restore the configuration and data using `slapadd`:
+
+```bash
+# slapadd -b cn=config -l ~/ldap-config.ldif -F /etc/ldap/slapd.d/
+# slapadd -n 1 -l ~/ldap-data.ldif -F /etc/ldap/slapd.d/
+```
+
+To ensure everything worked, we create a new ldif file based on the data on the backup server. Afterwards, the new ldif file can be displayed and we can see that everything worked.
+
+```bash
+# slapcat -l ldap-data-b.ldif
+```
+
+```bash 
+# cat ldap-data-b.ldif 
+dn: dc=betrayer,dc=com
+structuralObjectClass: organization
+entryUUID: 1c2b9bf0-d8b8-103b-9330-2bdbf336837c
+creatorsName: cn=admin,dc=betrayer,dc=com
+createTimestamp: 20211113102755Z
+objectClass: organization
+objectClass: dcObject
+objectClass: top
+dc: betrayer
+o: betrayer.com
+entryCSN: 20211115133040.851821Z#000000#000#000000
+modifiersName: cn=admin,dc=betrayer,dc=com
+modifyTimestamp: 20211115133040Z
+
+dn: cn=admin,dc=betrayer,dc=com
+description: LDAP administrator
+cn: admin
+objectClass: organizationalRole
+objectClass: simpleSecurityObject
+userPassword:: e1NTSEF9cEhFK0VQT0cyZ3lSeU9nanZGcXNXT2I1ekdzR2w5Q0Q=
+structuralObjectClass: organizationalRole
+entryUUID: f89e4158-da63-103b-9b6b-03efa5ff8503
+creatorsName: cn=admin,dc=betrayer,dc=com
+createTimestamp: 20211115133040Z
+entryCSN: 20211115133040.866711Z#000000#000#000000
+modifiersName: cn=admin,dc=betrayer,dc=com
+modifyTimestamp: 20211115133040Z
+
+dn: ou=departments,dc=betrayer,dc=com
+ou: departments
+objectClass: top
+objectClass: organizationalUnit
+structuralObjectClass: organizationalUnit
+entryUUID: f89f5066-da63-103b-9b6c-03efa5ff8503
+creatorsName: cn=admin,dc=betrayer,dc=com
+createTimestamp: 20211115133040Z
+entryCSN: 20211115133040.873650Z#000000#000#000000
+modifiersName: cn=admin,dc=betrayer,dc=com
+modifyTimestamp: 20211115133040Z
+
+dn: ou=software,ou=departments,dc=betrayer,dc=com
+ou: software
+objectClass: top
+objectClass: organizationalUnit
+structuralObjectClass: organizationalUnit
+entryUUID: f8a05240-da63-103b-9b6d-03efa5ff8503
+creatorsName: cn=admin,dc=betrayer,dc=com
+createTimestamp: 20211115133040Z
+entryCSN: 20211115133040.880251Z#000000#000#000000
+modifiersName: cn=admin,dc=betrayer,dc=com
+modifyTimestamp: 20211115133040Z
+...
+```
+
+TODO: Check that the checksum matches and slapd-service is running 
+
+TODO: Add screenshots!!!!!!!
+
+#### Accessing LDAP by a Go application
