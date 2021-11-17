@@ -1055,5 +1055,244 @@ Now we can look at the syslog with `cat /var/log/syslog`.
 
 ![Displaying Syslog](./static/syslog.png)
 
-TODO: Is it required to write to a logfile?
+#### LDAP based user login
 
+First, we create a backup of our working PAM configuration.
+
+```bash
+cd /etc
+tar zcf /root/pam.tgz pam.conf pam.d
+```
+
+We can then check if all worked correctly:
+
+```bash
+# tar ztf /root/pam.tgz 
+pam.conf
+pam.d/
+pam.d/passwd
+pam.d/sshd
+pam.d/common-auth
+pam.d/common-session-noninteractive
+pam.d/runuser-l
+pam.d/su
+pam.d/other
+pam.d/su-l
+pam.d/cron
+pam.d/runuser
+pam.d/common-password
+pam.d/chpasswd
+pam.d/common-session
+pam.d/chsh
+pam.d/login
+pam.d/common-account
+pam.d/newusers
+pam.d/chfn
+```
+
+Install `libpam-ldapd` via `apt install libpam-ldapd`.
+
+Configure the server like displayed in the following screenshots.
+
+
+
+Then we reboot our server and continue the configuration.
+
+Test your LDAP setup: 
+
+```bash
+# id waibel
+uid=1337(waibel) gid=100(users) groups=100(users)
+```
+
+Edit the `passwd`, `group` and `shadow` line in your `/etc/nsswitch.conf` so that they look similar than in our configuration: 
+
+```bash
+# cat /etc/nsswitch.conf 
+# /etc/nsswitch.conf
+#
+# Example configuration of GNU Name Service Switch functionality.
+# If you have the `glibc-doc-reference' and `info' packages installed, try:
+# `info libc "Name Service Switch"' for information about this file.
+
+passwd:         files ldap
+group:          files ldap
+shadow:         files ldap
+gshadow:        files
+
+hosts:          files dns
+networks:       files
+
+protocols:      db files
+services:       db files
+ethers:         db files
+rpc:            db files
+
+netgroup:       nis
+```
+
+Make sure that `PasswordAuthentication` is set to `no` in `/etc/ssh/sshd_config`:
+
+```bash
+# cat /etc/ssh/sshd_config
+#	$OpenBSD: sshd_config,v 1.103 2018/04/09 20:41:22 tj Exp $
+
+# This is the sshd server system-wide configuration file.  See
+# sshd_config(5) for more information.
+
+# This sshd was compiled with PATH=/usr/bin:/bin:/usr/sbin:/sbin
+
+# The strategy used for options in the default sshd_config shipped with
+# OpenSSH is to specify options with their default value where
+# possible, but leave them commented.  Uncommented options override the
+# default value.
+
+Include /etc/ssh/sshd_config.d/*.conf
+
+#Port 22
+#AddressFamily any
+#ListenAddress 0.0.0.0
+#ListenAddress ::
+
+#HostKey /etc/ssh/ssh_host_rsa_key
+#HostKey /etc/ssh/ssh_host_ecdsa_key
+#HostKey /etc/ssh/ssh_host_ed25519_key
+
+# Ciphers and keying
+#RekeyLimit default none
+
+# Logging
+#SyslogFacility AUTH
+#LogLevel INFO
+
+# Authentication:
+
+#LoginGraceTime 2m
+#PermitRootLogin prohibit-password
+#StrictModes yes
+#MaxAuthTries 6
+#MaxSessions 10
+
+#PubkeyAuthentication yes
+
+# Expect .ssh/authorized_keys2 to be disregarded by default in future.
+#AuthorizedKeysFile	.ssh/authorized_keys .ssh/authorized_keys2
+
+#AuthorizedPrincipalsFile none
+
+#AuthorizedKeysCommand none
+#AuthorizedKeysCommandUser nobody
+
+# For this to work you will also need host keys in /etc/ssh/ssh_known_hosts
+#HostbasedAuthentication no
+# Change to yes if you don't trust ~/.ssh/known_hosts for
+# HostbasedAuthentication
+#IgnoreUserKnownHosts no
+# Don't read the user's ~/.rhosts and ~/.shosts files
+#IgnoreRhosts yes
+
+# To disable tunneled clear text passwords, change to no here!
+PasswordAuthentication no
+#PermitEmptyPasswords no
+
+# Change to yes to enable challenge-response passwords (beware issues with
+# some PAM modules and threads)
+ChallengeResponseAuthentication no
+
+# Kerberos options
+#KerberosAuthentication no
+#KerberosOrLocalPasswd yes
+#KerberosTicketCleanup yes
+#KerberosGetAFSToken no
+
+# GSSAPI options
+#GSSAPIAuthentication no
+#GSSAPICleanupCredentials yes
+#GSSAPIStrictAcceptorCheck yes
+#GSSAPIKeyExchange no
+
+# Set this to 'yes' to enable PAM authentication, account processing,
+# and session processing. If this is enabled, PAM authentication will
+# be allowed through the ChallengeResponseAuthentication and
+# PasswordAuthentication.  Depending on your PAM configuration,
+# PAM authentication via ChallengeResponseAuthentication may bypass
+# the setting of "PermitRootLogin without-password".
+# If you just want the PAM account and session checks to run without
+# PAM authentication, then enable this but set PasswordAuthentication
+# and ChallengeResponseAuthentication to 'no'.
+UsePAM yes
+
+#AllowAgentForwarding yes
+#AllowTcpForwarding yes
+#GatewayPorts no
+X11Forwarding yes
+#X11DisplayOffset 10
+#X11UseLocalhost yes
+#PermitTTY yes
+PrintMotd no
+#PrintLastLog yes
+#TCPKeepAlive yes
+#PermitUserEnvironment no
+#Compression delayed
+#ClientAliveInterval 0
+#ClientAliveCountMax 3
+#UseDNS no
+#PidFile /var/run/sshd.pid
+#MaxStartups 10:30:100
+#PermitTunnel no
+#ChrootDirectory none
+#VersionAddendum none
+
+# no default banner path
+#Banner none
+
+# Allow client to pass locale environment variables
+AcceptEnv LANG LC_*
+
+# override default of no subsystems
+Subsystem	sftp	/usr/lib/openssh/sftp-server
+
+# Example of overriding settings on a per-user basis
+#Match User anoncvs
+#	X11Forwarding no
+#	AllowTcpForwarding no
+#	PermitTTY no
+#	ForceCommand cvs server
+```
+
+Um sicherzugehen, dass unsere Ergebnisse nicht durch ungewolltes caching verfälscht werden, deaktivieren wir `nscd`: 
+
+```bash
+# systemctl stop nscd
+# systemctl status nscd
+● nscd.service - Name Service Cache Daemon
+     Loaded: loaded (/lib/systemd/system/nscd.service; enabled; vendor preset:>
+     Active: inactive (dead) since Wed 2021-11-17 21:26:35 CET; 4s ago
+    Process: 77 ExecStart=/usr/sbin/nscd (code=exited, status=0/SUCCESS)
+    Process: 364 ExecStop=/usr/sbin/nscd --shutdown (code=exited, status=0/SUC>
+   Main PID: 80 (code=exited, status=0/SUCCESS)
+
+Nov 17 21:17:27 sdi1b nscd[80]: 80 monitoring directory `/etc` (2)
+Nov 17 21:17:27 sdi1b nscd[80]: 80 monitoring file `/etc/services` (6)
+Nov 17 21:17:27 sdi1b nscd[80]: 80 monitoring directory `/etc` (2)
+Nov 17 21:17:27 sdi1b nscd[80]: 80 disabled inotify-based monitoring for file >
+Nov 17 21:17:27 sdi1b nscd[80]: 80 stat failed for file `/etc/netgroup'; will >
+Nov 17 21:17:27 sdi1b systemd[1]: Started Name Service Cache Daemon.
+Nov 17 21:17:46 sdi1b nscd[80]: 80 checking for monitored file `/etc/netgroup'>
+Nov 17 21:26:35 sdi1b systemd[1]: Stopping Name Service Cache Daemon...
+Nov 17 21:26:35 sdi1b systemd[1]: nscd.service: Succeeded.
+Nov 17 21:26:35 sdi1b systemd[1]: Stopped Name Service Cache Daemon.
+```
+
+Wir legen mit `mkhomedir_helper waibel` ein Homeverzeichnis an und passen die Rechte an, sodass das Ergebnis letztendlich so aussieht:
+
+```bash
+drwxr-xr-x  2 waibel users   5 Nov 17 21:32 jakob
+```
+
+```bash 
+# id waibel
+uid=1337(waibel) gid=100(users) groups=100(users)
+```
+
+TODO: Are we finished here?
