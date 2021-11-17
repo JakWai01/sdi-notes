@@ -1094,7 +1094,11 @@ Install `libpam-ldapd` via `apt install libpam-ldapd`.
 
 Configure the server like displayed in the following screenshots.
 
+![Configure server URI](./static/ldapd_1.png)
 
+![Configure LDAP search base](./static/ldapd_2.png)
+
+![Configure services](./static/ldapd_3.png)
 
 Then we reboot our server and continue the configuration.
 
@@ -1260,7 +1264,7 @@ Subsystem	sftp	/usr/lib/openssh/sftp-server
 #	ForceCommand cvs server
 ```
 
-Um sicherzugehen, dass unsere Ergebnisse nicht durch ungewolltes caching verfälscht werden, deaktivieren wir `nscd`: 
+To make sure the results are not influenced by unwanted caching, we stop the `nscd` service.
 
 ```bash
 # systemctl stop nscd
@@ -1284,7 +1288,7 @@ Nov 17 21:26:35 sdi1b systemd[1]: nscd.service: Succeeded.
 Nov 17 21:26:35 sdi1b systemd[1]: Stopped Name Service Cache Daemon.
 ```
 
-Wir legen mit `mkhomedir_helper waibel` ein Homeverzeichnis an und passen die Rechte an, sodass das Ergebnis letztendlich so aussieht:
+With `mkhomedir_helper waibel`, we create a new homedirectory and modify the access rights. The result should look somewhat like this:
 
 ```bash
 drwxr-xr-x  2 waibel users   5 Nov 17 21:32 jakob
@@ -1386,6 +1390,80 @@ modifyTimestamp: 20211115133040Z
 
 TODO: Check that the checksum matches and slapd-service is running 
 
-TODO: Add screenshots!!!!!!!
-
 #### Accessing LDAP by a Go application
+
+```Go
+package main
+
+import (
+	"flag"
+	"fmt"
+	"log"
+
+	"github.com/go-ldap/ldap"
+)
+
+func main() {
+	uid := flag.String("uid", "", "User-Id e.g. jw163")
+	password := flag.String("pw", "", "Password e.g. password")
+	flag.Parse()
+
+	ldapURL := "ldaps://ldap1.mi.hdm-stuttgart.de"
+	l, err := ldap.DialURL(ldapURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer l.Close()
+	err = l.Bind(fmt.Sprintf("uid=%s, ou=userlist,dc=hdm-stuttgart,dc=de", *uid), *password)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Until here, everything should work
+	BaseDN := "dc=hdm-stuttgart,dc=de"
+	Filter := fmt.Sprintf("(uid=%s)", *uid)
+	searchReq := ldap.NewSearchRequest(
+		BaseDN,
+		ldap.ScopeWholeSubtree,
+		ldap.NeverDerefAliases,
+		0,
+		0,
+		false,
+		Filter,
+		[]string{},
+		nil,
+	)
+	result, err := l.Search(searchReq)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if len(result.Entries) > 0 {
+		result.PrettyPrint(4)
+	} else {
+		fmt.Println("Couldn't fetch search entries")
+	}
+}
+```
+
+When executing the program, the output looks like this: 
+
+```bash
+$ go run main.go --uid=jw163 --pw=CENSORED
+    DN: uid=jw163,ou=userlist,dc=hdm-stuttgart,dc=de
+      objectClass: [hdmAccount hdmStudent inetOrgPerson posixAccount shadowAccount eduPerson]
+      uid: [jw163]
+      mail: [jw163@hdm-Stuttgart.de]
+      uidNumber: [67828]
+      cn: [Waibel Jakob Elias]
+      loginShell: [/bin/sh]
+      hdmCategory: [1]
+      gidNumber: [100]
+      givenName: [Jakob Elias]
+      homeDirectory: [/home/stud/j/jw163]
+      sn: [Waibel]
+      matrikelNr: [40062]
+```
+
+TODO: Why aren't we getting the detailed version? I can't access the detailed version in Apache Directory Studio either
