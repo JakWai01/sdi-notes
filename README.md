@@ -932,3 +932,128 @@ After that look for the `posixAccount` like displayed in the screenshot and `Add
 
 ![Search results](./static/100_t_result.png)
 
+#### Accessing LDAP data by a mail client
+
+To use LDAP data with a mail client, it is necessary to add a new address book. It's configuration is displayed in the picture below:
+
+![Address book configuration](./static/mail_configuration.png)
+
+After configuring the address book, addresses are only available when searching. As shown in the following picture, we can now find the fictional characters we created when populating our tree. 
+
+![Example of LDAP Address](./static/mail_example.png)
+
+#### LDAP configuration
+
+```bash
+# ldapsearch -Y EXTERNAL -H ldapi:/// -b cn=config
+SASL/EXTERNAL authentication started
+SASL username: gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth
+SASL SSF: 0
+# extended LDIF
+#
+# LDAPv3
+# base <cn=config> with scope subtree
+# filter: (objectclass=*)
+# requesting: ALL
+#
+
+# config
+dn: cn=config
+objectClass: olcGlobal
+cn: config
+olcArgsFile: /var/run/slapd/slapd.args
+olcLogLevel: none
+olcPidFile: /var/run/slapd/slapd.pid
+olcToolThreads: 1
+
+# module{0}, config
+dn: cn=module{0},cn=config
+objectClass: olcModuleList
+cn: module{0}
+olcModulePath: /usr/lib/ldap
+olcModuleLoad: {0}back_mdb
+
+# schema, config
+dn: cn=schema,cn=config
+objectClass: olcSchemaConfig
+cn: schema
+olcObjectIdentifier: OLcfg 1.3.6.1.4.1.4203.1.12.2
+olcObjectIdentifier: OLcfgAt OLcfg:3
+olcObjectIdentifier: OLcfgGlAt OLcfgAt:0
+...
+olcDatabase: {-1}frontend
+olcAccess: {0}to * by dn.exact=gidNumber=0+uidNumber=0,cn=peercred,cn=external
+ ,cn=auth manage by * break
+olcAccess: {1}to dn.exact="" by * read
+olcAccess: {2}to dn.base="cn=Subschema" by * read
+olcSizeLimit: 500
+
+# {0}config, config
+dn: olcDatabase={0}config,cn=config
+objectClass: olcDatabaseConfig
+olcDatabase: {0}config
+olcAccess: {0}to * by dn.exact=gidNumber=0+uidNumber=0,cn=peercred,cn=external
+ ,cn=auth manage by * break
+olcRootDN: cn=admin,cn=config
+
+# {1}mdb, config
+dn: olcDatabase={1}mdb,cn=config
+objectClass: olcDatabaseConfig
+objectClass: olcMdbConfig
+olcDatabase: {1}mdb
+olcDbDirectory: /var/lib/ldap
+olcSuffix: dc=betrayer,dc=com
+olcAccess: {0}to attrs=userPassword by self write by anonymous auth by * none
+olcAccess: {1}to attrs=shadowLastChange by self write by * read
+olcAccess: {2}to * by * read
+olcLastMod: TRUE
+olcRootDN: cn=admin,dc=betrayer,dc=com
+olcRootPW: {SSHA}0mF0mX3FUNd0zZ0u3bKPQQA1ubycnHvh
+olcDbCheckpoint: 512 30
+olcDbIndex: objectClass eq
+olcDbIndex: cn,uid eq
+olcDbIndex: uidNumber,gidNumber eq
+olcDbIndex: member,memberUid eq
+olcDbMaxSize: 1073741824
+
+# search result
+search: 2
+result: 0 Success
+
+# numResponses: 11
+# numEntries: 10
+```
+
+As mentioned in the task, we find the required information near the end of the output. In the first occurence of `oldRootDN`, where `olcRootDN: cn=admin,cn=config`, no passwort is set afterwards. In the second occurence `olcRootDN=cn=admin,dc=betrayer,dc=com`, a password is set with `oldRootPW`. This password not being specified implies that configuration access is limited to localhost.
+
+To change these settings, we must create a LDIF file which sets the required properties. A password hash can be generated using a website like: https://projects.marsching.org/weave4j/util/genpassword.php. We chose to use the password `password` again. 
+
+```bash
+# cat add_olcRootPW.ldif 
+dn: olcDatabase={0}config,cn=config
+replace: olcRootPW
+olcRootPW: {ssha}U1oLsngiAsXhFQrav5UzHxn2/9qPNcL+
+```
+
+```bash
+# ldapmodify -Q -Y EXTERNAL -H ldapi:/// -f ~/add_olcRootPW.ldif
+modifying entry "olcDatabase={0}config,cn=config"
+
+```
+
+![Network parameters for configuration connection](./static/1.png)
+
+![Authentication for configuration connection](./static/2.png)
+
+![Browser Options for configuration connection](./static/3.png)
+
+After connecting, we can set the `olcLogLevel`. There are multiple options to set the log level to. We decided to get the most information possible, which is achieved by using the `olcLogLevel` of `-1`. 
+
+![Set Log Level](./static/set_loglevel.png)
+
+Now we can look at the syslog with `cat /var/log/syslog`. 
+
+![Displaying Syslog](./static/syslog.png)
+
+TODO: Is it required to write to a logfile?
+
