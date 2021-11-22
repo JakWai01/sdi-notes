@@ -1610,6 +1610,8 @@ Just modify the /etc/apache2/mods-available/alias.conf file:
                 Require all granted
         </Directory>
 
+        Alias /jw163/ "/var/www/sdidoc/"
+
         <Directory "/var/www/sdidoc">
                 Options FollowSymlinks
                 AllowOverride None
@@ -1617,4 +1619,13 @@ Just modify the /etc/apache2/mods-available/alias.conf file:
         </Directory>
 
 </IfModule>
+
+# vim: syntax=apache ts=4 sw=4 sts=4 sr noet
+```
+
+Test if everything works: 
+
+```shell
+# curl 127.0.0.1/jw163/
+<a href="https://github.com/JakWai01/sdi-notes/">Documentation</a>
 ```
