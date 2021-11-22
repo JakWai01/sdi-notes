@@ -1467,3 +1467,154 @@ $ go run main.go --uid=jw163 --pw=CENSORED
 ```
 
 TODO: Why aren't we getting the detailed version? I can't access the detailed version in Apache Directory Studio either
+
+## Apache Web Server
+
+Intall the Apache Web Server:
+
+```shell
+apt install apache2
+```
+
+Start the `apache2.service`:
+
+```shell
+systemctl start apache2.service
+```
+
+Check the status of the `apache2.service` service to make sure everything works accordingly:
+
+```shell
+# systemctl status apache2.service
+● apache2.service - The Apache HTTP Server
+     Loaded: loaded (/lib/systemd/system/apache2.service; enabled; vendor preset: enabled)
+     Active: active (running) since Mon 2021-11-22 14:42:17 CET; 8min ago
+       Docs: https://httpd.apache.org/docs/2.4/
+    Process: 11835 ExecStart=/usr/sbin/apachectl start (code=exited, status=0/SUCCESS)
+   Main PID: 11839 (apache2)
+      Tasks: 55 (limit: 4915)
+     Memory: 5.7M
+     CGroup: /system.slice/apache2.service
+             ├─11839 /usr/sbin/apache2 -k start
+             ├─11840 /usr/sbin/apache2 -k start
+             └─11841 /usr/sbin/apache2 -k start
+
+Nov 22 14:42:17 sdi1a systemd[1]: Starting The Apache HTTP Server...
+Nov 22 14:42:17 sdi1a systemd[1]: Started The Apache HTTP Server.
+```
+
+### Move the original HTML start document to a backup location doc.html. What do you observe when accessing your server?
+
+The original html file is located at `/var/www/html`. 
+
+```shell
+# mv index.html doc.html
+```
+
+Now observe what's running on the website after reloading the service with `systemctl reload apache2.service`: 
+
+```shell
+# curl 127.0.0.1:80
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+<html>
+ <head>
+  <title>Index of /</title>
+ </head>
+ <body>
+<h1>Index of /</h1>
+  <table>
+   <tr><th valign="top"><img src="/icons/blank.gif" alt="[ICO]"></th><th><a href="?C=N;O=D">Name</a></th><th><a href="?C=M;O=A">Last modified</a></th><th><a href="?C=S;O=A">Size</a></th><th><a href="?C=D;O=A">Description</a></th></tr>
+   <tr><th colspan="5"><hr></th></tr>
+<tr><td valign="top"><img src="/icons/text.gif" alt="[TXT]"></td><td><a href="doc.html">doc.html</a></td><td align="right">2021-11-22 14:55  </td><td align="right"> 10K</td><td>&nbsp;</td></tr>
+   <tr><th colspan="5"><hr></th></tr>
+</table>
+<address>Apache/2.4.51 (Debian) Server at 127.0.0.1 Port 80</address>
+</body></html>
+```
+
+#### Provide your own root index.html document and access your server's root again.
+
+Now we can create our own `index.html`: 
+
+```shell 
+# curl 127.0.0.1
+Hello World!
+```
+
+#### Install the Apache documentation being contained in the Ubuntu package apache2-doc. How do you find your server's URL access path to it (Apart from asking Google or Stackoverflow)? 
+
+Just look at the backup of the first `index.html` which should now be named `doc.html`. In this file, there is a link to `/manual/`:
+
+```html
+...
+<div class="content_section_text">
+          <p>
+                Debian's Apache2 default configuration is different from the
+                upstream default configuration, and split into several files optimized for
+                interaction with Debian tools. The configuration system is
+                <b>fully documented in
+                /usr/share/doc/apache2/README.Debian.gz</b>. Refer to this for the full
+                documentation. Documentation for the web server itself can be
+                found by accessing the <a href="/manual">manual</a> if the <tt>apache2-doc</tt>
+                package was installed on this server.
+
+          </p>
+          <p>
+...
+```
+
+Now we can just look at whats running on `127.0.0.1/manual/`.
+
+```shell
+# curl 127.0.0.1/manual/
+<html><head><meta http-equiv="refresh" content="0; URL=en/index.html"></head>
+<body>
+<table><tr><td><a href="da/index.html">da/</a></td></tr>
+<tr><td><a href="de/index.html">de/</a></td></tr>
+<tr><td><a href="en/index.html">en/</a></td></tr>
+<tr><td><a href="es/index.html">es/</a></td></tr>
+<tr><td><a href="fr/index.html">fr/</a></td></tr>
+<tr><td><a href="ja/index.html">ja/</a></td></tr>
+<tr><td><a href="ko/index.html">ko/</a></td></tr>
+<tr><td><a href="pt-br/index.html">pt-br/</a></td></tr>
+<tr><td><a href="ru/index.html">ru/</a></td></tr>
+<tr><td><a href="tr/index.html">tr/</a></td></tr>
+<tr><td><a href="zh-cn/index.html">zh-cn/</a></td></tr>
+```
+# chown -R www-data /var/www/
+#### Upload your current HTML documentation to a directory /home/sdidoc. Then modify your web server's configuration accordingly to access this directory by the URL http://sdi....mi.hdm-stuttgart.de/xy123 replacing “xy123” by your user name. 
+
+Create the directory `/var/www/sdidoc` and add a your documentation to the folder.
+
+Just modify the /etc/apache2/mods-available/alias.conf file: 
+
+```shell
+<IfModule alias_module>
+        # Aliases: Add here as many aliases as you need (with no limit). The format is
+        # Alias fakename realname
+        #
+        # Note that if you include a trailing / on fakename then the server will
+        # require it to be present in the URL.  So "/icons" isn't aliased in this
+        # example, only "/icons/".  If the fakename is slash-terminated, then the
+        # realname must also be slash terminated, and if the fakename omits the
+        # trailing slash, the realname must also omit it.
+        #
+        # We include the /icons/ alias for FancyIndexed directory listings.  If
+        # you do not use FancyIndexing, you may comment this out.
+
+        Alias /icons/ "/usr/share/apache2/icons/"
+
+        <Directory "/usr/share/apache2/icons">
+                Options FollowSymlinks
+                AllowOverride None
+                Require all granted
+        </Directory>
+
+        <Directory "/var/www/sdidoc">
+                Options FollowSymlinks
+                AllowOverride None
+                Require all granted
+        </Directory>
+
+</IfModule>
+```
