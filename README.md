@@ -1785,3 +1785,286 @@ Test your configuration:
 <tr><td><a href="tr/index.html">tr/</a></td></tr>
 <tr><td><a href="zh-cn/index.html">zh-cn/</a></td></tr>
 ```
+
+### LDAP Authentication
+
+First, a test user `tuser` was created: 
+
+![Test User Creation](./static/tuser.png)
+
+In the following, the bind access is being tested: 
+
+![Test Bind Access](./static/logintuser.png)
+
+As displayed below, it works: 
+
+![Login successful](./static/successtuser.png)
+
+Edit the apache.conf, so the relevant directory looks like the following: 
+
+```shell
+Alias /manual /usr/share/doc/apache2-doc/manual/
+
+<Directory "/usr/share/doc/apache2-doc/manual/">
+    Options Indexes FollowSymlinks
+    AuthType Basic
+    AuthName "Apache LDAP authentication"
+    AuthBasicAuthoritative Off
+    AuthBasicProvider ldap
+    AuthLDAPURL "ldap://141.62.75.101/uid=tuser,ou=testing,ou=software,ou=departments,dc=betrayer,dc=com"
+    AuthLDAPBindDN "uid=tuser,ou=testing,ou=software,ou=departments,dc=betrayer,dc=com"
+    AuthLDAPBindPassword password
+    Require valid-user
+    AllowOverride None
+    AddDefaultCharset off
+</Directory>
+
+Alias /jw163 /var/www/sdidoc/
+
+<Directory "/var/www/sdidoc/">
+    Options Indexes FollowSymlinks
+    AuthType Basic
+    AuthName "Apache LDAP authentication"
+    AuthBasicAuthoritative Off
+    AuthBasicProvider ldap
+    AuthLDAPURL "ldap://141.62.75.101/uid=tuser,ou=testing,ou=software,ou=departments,dc=betrayer,dc=com"
+    AuthLDAPBindDN "uid=tuser,ou=testing,ou=software,ou=departments,dc=betrayer,dc=com"
+    AuthLDAPBindPassword password
+    Require valid-user
+    AllowOverride None
+    AddDefaultCharset off
+</Directory>
+```
+
+Enable the `authnz_ldap` module and make sure that your configuration is enabled: 
+
+```shell
+# a2enmod authnz_ldap
+Considering dependency ldap for authnz_ldap:
+Enabling module ldap.
+Enabling module authnz_ldap.
+To activate the new configuration, you need to run:
+  systemctl restart apache2
+```
+
+Restart the apache service:
+
+```shell
+# systemctl restart apache2
+```
+
+Now the authentication can be tested: 
+
+![Ldap Login](./static/ldaplogin.png)
+
+![Ldap Credentials](./static/ldapcredentials.png)
+
+![Ldap Auth Success](./static/authworks.png)
+
+### MySQL database administration
+
+```shell
+# sudo apt install mariadb-servera
+# mysql_secure_installation
+```
+
+So far, the `mysql_secure_installation` script fails with `Permission denied`. To resolve this issue we have to add some additional configuration regarding lxc.
+
+Create `/etc/systemd/system/mariadb.service.d/lxc.conf` with the following content: 
+
+```shell
+[Service]
+ProtectHome=false
+ProtectSystem=false
+
+# These settings turned out to not be necessary in my case, but YMMV
+#PrivateTmp=false
+#PrivateNetwork=false
+PrivateDevices=falsev
+```
+
+Restart:
+
+```shell
+# systemctl daemon-reload 
+# systemctl restart mariadb
+```
+
+Now executing the `mysql_secure_installation` script works.
+
+```shell
+# mysql_secure_installation
+
+NOTE: RUNNING ALL PARTS OF THIS SCRIPT IS RECOMMENDED FOR ALL MariaDB
+      SERVERS IN PRODUCTION USE!  PLEASE READ EACH STEP CAREFULLY!
+
+      In order to log into MariaDB to secure it, we'll need the current
+      password for the root user. If you've just installed MariaDB, and
+      haven't set the root password yet, you should just press enter here.
+
+      Enter current password for root (enter for none):
+      OK, successfully used password, moving on...
+
+      Setting the root password or using the unix_socket ensures that nobody
+      can log into the MariaDB root user without the proper authorisation.
+
+      You already have your root account protected, so you can safely answer 'n'.
+
+      Switch to unix_socket authentication [Y/n] ^C
+      Aborting!
+
+      Cleaning up...
+      root@sdi1a:/etc/systemd/system/mariadb.service.d# mysql_secure_installation
+
+      NOTE: RUNNING ALL PARTS OF THIS SCRIPT IS RECOMMENDED FOR ALL MariaDB
+            SERVERS IN PRODUCTION USE!  PLEASE READ EACH STEP CAREFULLY!
+
+            In order to log into MariaDB to secure it, we'll need the current
+            password for the root user. If you've just installed MariaDB, and
+            haven't set the root password yet, you should just press enter here.
+
+            Enter current password for root (enter for none):
+            OK, successfully used password, moving on...
+
+            Setting the root password or using the unix_socket ensures that nobody
+            can log into the MariaDB root user without the proper authorisation.
+
+            You already have your root account protected, so you can safely answer 'n'.
+
+            Switch to unix_socket authentication [Y/n] Y
+            Enabled successfully!
+            Reloading privilege tables..
+             ... Success!
+
+
+             You already have your root account protected, so you can safely answer 'n'.
+
+             Change the root password? [Y/n] y
+             New password:
+             Re-enter new password:
+             Password updated successfully!
+             Reloading privilege tables..
+              ... Success!
+
+
+              By default, a MariaDB installation has an anonymous user, allowing anyone
+              to log into MariaDB without having to have a user account created for
+              them.  This is intended only for testing, and to make the installation
+              go a bit smoother.  You should remove them before moving into a
+              production environment.
+
+              Remove anonymous users? [Y/n] y
+               ... Success!
+
+               Normally, root should only be allowed to connect from 'localhost'.  This
+               ensures that someone cannot guess at the root password from the network.
+
+               Disallow root login remotely? [Y/n] y
+                ... Success!
+
+                By default, MariaDB comes with a database named 'test' that anyone can
+                access.  This is also intended only for testing, and should be removed
+                before moving into a production environment.
+
+                Remove test database and access to it? [Y/n] y
+                 - Dropping test database...
+                  ... Success!
+                   - Removing privileges on test database...
+                    ... Success!
+
+                    Reloading the privilege tables will ensure that all changes made so far
+                    will take effect immediately.
+
+                    Reload privilege tables now? [Y/n] y
+                     ... Success!
+
+                     Cleaning up...
+
+                     All done!  If you've completed all of the above steps, your MariaDB
+                     installation should now be secure.
+
+                     Thanks for using MariaDB!
+```
+
+Install `phpmyadmin`:
+
+```shell
+apt install phpmyadmin libapache2-mod-php
+```
+
+Now `phpmyadmin` can be reached with `sdi1a.mi.hdm-stuttgart.de/phpmyadmin`:
+
+![phpmyadmin](./static/phpmyadmin.png)
+
+### Providing WEB based user management to your LDAP Server
+
+Install LDAP-Account-Manager:
+
+```shell
+apt install ldap-account-manager
+```
+
+The LDAP-Account-Manager can be reached with `sdi1a.mi.hdm-stuttgart.de/lam`:
+
+![lam](./static/lam.png)
+
+To configure LAM go to the `LAM Configuration`. The default "Master" password is `lam`. I changed this password to `password.
+
+### Publish your documentation
+
+Add DNS-Entry:
+
+```shell
+
+tart of Authority record defining the key characteristics of this zone
+@       IN      SOA     ns1.mi.hdm-stuttgart.de. hostmaster.mi.hdm-stuttgart.de. (
+                              1         ; Serial
+                                                       604800         ; Refresh
+                                                                                 86400         ; Retry
+                                                                                                         2419200         ; Expire
+                                                                                                                                   86400 )       ; Negative Cache TTL
+
+                                                                                                                                   @       IN      NS      ns1.mi.hdm-stuttgart.de.
+                                                                                                                                   @       IN      A       141.62.75.101
+                                                                                                                                   @       IN      MX      10      mx1.hdm-stuttgart.de.
+
+                                                                                                                                   ; A records
+                                                                                                                                   www                             IN      A       141.62.75.101
+                                                                                                                                   sdi1a.mi.hdm-stuttgart.de.      IN      A       141.62.75.101
+                                                                                                                                   sdi1b.mi.hdm-stuttgart.de.      IN      A       141.62.75.101
+                                                                                                                                   ns1.mi.hdm-stuttgart.de.        IN      A       141.62.75.101
+
+                                                                                                                                   ; CNAME records
+                                                                                                                                   www1-1  IN      CNAME   www
+                                                                                                                                   www1-2  IN      CNAME   www
+                                                                                                                                   info    IN      CNAME   www
+                                                                                                                                   jw163   IN      CNAME   www
+                                                                                                                                   manual  IN      CNAME   www
+                                                                                                                                   doc     IN      CNAME   www
+                                                                                                                
+```
+
+Then add another Alias to your configuration:
+
+```shell
+Alias /doc /var/www/sdidoc/
+
+<Directory "/var/www/sdidoc/">
+    Options Indexes FollowSymlinks
+    Require all granted
+    AllowedOverride None
+    AddDefaultCharset off
+</Directory>
+```
+
+Restart bind and apache:
+
+```shell
+# systemctl restart bind9 
+# systemctl restart apache2
+```
+
+Now the docs should be visible: 
+
+![doc](./static/doc.png)
+
