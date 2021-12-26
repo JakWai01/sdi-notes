@@ -2179,3 +2179,156 @@ Now, nextcloud can be configured using the web interface:
 After enabling the LDAP plugin, you can configure it and test login with one of your users. As can be seen in the following screenshot, we can login using one of our custom users:
 
 ![LDAP Login](./static/testlogin.png)
+
+## Icinga 
+
+Install dependencies:
+
+```shell
+# apt install -y apache2 mariadb-server php libapache2-mod-php php-curl php-gd php-mbstring php-xml php-xmlrpc php-soap php-intl php-zip php-cli php-mysql php-common php-opcache php-pgsql php-gmp php-imagick
+```
+
+Edit the config: 
+
+```shell
+# vim /etc/php/7.4/apache2/php.ini
+```
+
+The following parameters need to be adjusted:
+
+```shell
+memory_limit = 256M 
+post_max_size = 64M
+upload_max_filesize = 100M	
+max_execution_time = 300
+default_charset = "UTF-8"
+date.timezone = "Europe/Berlin"
+cgi.fix_pathinfo=0
+```
+
+Restart apache2 service:
+
+```shell
+# systemctl restart apache2
+```
+
+As we have already configured our mysql database, we can skip this step.
+
+Continue by installing the icinga2 packages:
+
+```shell 
+# apt install -y icinga2 monitoring-plugins
+```
+
+Start and ebable the systemd service: 
+
+```shell
+# systemctl start icinga2
+# systemctl enable icinga2
+```
+
+Check its status: 
+
+![Icinga status](./static/icinga.png)
+
+Install the icinga mysql plugin: 
+
+```shell
+# apt install -y icinga2-ido-mysql
+```
+
+Enable the ido-mysql feature: 
+
+```shell
+# icinga2 feature enable ido-mysql
+```
+
+Restart icinga2: 
+
+```shell
+# systemctl restart icinga2
+```
+
+Install icinga web interface: 
+
+```shell
+# apt install icingaweb2 icingacli
+```
+
+Create mysql database and user: 
+
+```shell
+# mysql -u root -p
+```
+
+```shell
+CREATE DATABASE icingaweb2;
+GRANT ALL PRIVILEGES ON icingaweb2.* TO 'icingaweb2'@'localhost' IDENTIFIED BY 'password';
+```
+
+```shell
+FLUSH PRIVILEGES;
+EXIT;
+```
+
+Create a token to configure `icinga` from the web-wizard:
+
+```shell
+# icingacli setup token create
+```
+
+Access `http://sdi1a.mi.hdm-stuttgart.de/icingaweb2/setup` to configure icinga from your browser:
+
+If your configuration results in an error because of missing permissions, consider solving this issue naivly: 
+
+```shell
+chmod 777 /etc/icingaweb2/
+```
+
+```shell 
+chmod 777 /etc/icingaweb2/enabledModules
+```
+
+Change email:
+
+```shell
+# cat /etc/icinga2/conf.d/users.conf
+/**
+ * The example user 'icingaadmin' and the example
+ * group 'icingaadmins'.
+ */
+
+object User "icingaadmin" {
+  import "generic-user"
+
+  display_name = "Icinga 2 Admin"
+  groups = [ "icingaadmins" ]
+
+  email = "jw163@hdm-stuttgart.de"
+}
+
+object UserGroup "icingaadmins" {
+  display_name = "Icinga 2 Admin Group"
+}
+```
+
+### Functional Checks
+
+#### Install Nagios plugins: 
+
+```shell
+# apt install nagios-plugins
+```
+
+#### Configure a http(s) check of your web server: 
+
+We need to extend the permissions on the `ping` command, to allow the web interface to execute the commands:
+
+```shell
+chmod +s /bin/ping
+```
+
+As we can see, we can reach the web server after reloading: 
+
+
+#### Check your local LDAP server
