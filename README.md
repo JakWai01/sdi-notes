@@ -1581,7 +1581,8 @@ Now we can just look at whats running on `127.0.0.1/manual/`.
 <tr><td><a href="tr/index.html">tr/</a></td></tr>
 <tr><td><a href="zh-cn/index.html">zh-cn/</a></td></tr>
 ```
-# chown -R www-data /var/www/
+<!-- `# chown -R www-data /var/www/` -->
+
 #### Upload your current HTML documentation to a directory /home/sdidoc. Then modify your web server's configuration accordingly to access this directory by the URL http://sdi....mi.hdm-stuttgart.de/xy123 replacing “xy123” by your user name. 
 
 Create the directory `/var/www/sdidoc` and add a your documentation to the folder.
@@ -2180,7 +2181,7 @@ After enabling the LDAP plugin, you can configure it and test login with one of 
 
 ![LDAP Login](./static/testlogin.png)
 
-## Icinga 
+<!-- ## Icinga 
 
 Install dependencies:
 
@@ -2331,4 +2332,4 @@ chmod +s /bin/ping
 As we can see, we can reach the web server after reloading: 
 
 
-#### Check your local LDAP server
+#### Check your local LDAP server -->
